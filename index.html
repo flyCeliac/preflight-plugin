@@ -142,11 +142,20 @@
   <div class="bridge-badge" id="bridgeBadge">Connecting to bridge...</div>
 
   <script type="module">
+    // Preflight — Even HUB plugin for airline pilots
+    // Author: flyCeliac
+    // Developed with the assistance of Claude (Anthropic)
+    //
+    // Even Hub SDK — provides waitForEvenAppBridge(), which resolves once the
+    // Even HUB iOS app has injected its JS bridge into this WebView.
     import { waitForEvenAppBridge } from 'https://unpkg.com/@evenrealities/even_hub_sdk@0.0.7/dist/index.js';
 
     let bridge = null;
     const badge = document.getElementById('bridgeBadge');
     const btn   = document.getElementById('sendBtn');
+
+    // Keep the send button disabled until the bridge is ready (or confirmed absent).
+    btn.disabled = true;
 
     waitForEvenAppBridge()
       .then(b => {
@@ -155,20 +164,39 @@
         btn.disabled = false;
       })
       .catch(e => {
+        // No bridge means we're running in a plain browser, not inside Even HUB.
+        // Still allow the UI to function so layout can be previewed without glasses.
         badge.textContent = 'Bridge unavailable (preview mode)';
-        btn.disabled = false; // allow testing UI without glasses
+        btn.disabled = false;
       });
 
-    btn.disabled = true;
-
-    const DISPLAY_W = 576; // container width in SDK units
+    // ── Display geometry ──────────────────────────────────────────────────────
+    // The G2 display is 576 SDK units wide, which corresponds to 40 monospace
+    // characters. CHAR_PX is used to convert character counts to pixel positions
+    // when placing the right-hand container.
+    const DISPLAY_W = 576;
     const CHAR_PX   = 14.4; // DISPLAY_W / 40 chars
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    // Format fuel to 3 significant figures (e.g. 34.5 → "34.5", 7.08 → "7.08").
     function fuelStr(n) {
       return parseFloat(n.toPrecision(3)).toString();
     }
 
+    // Build the text content for both display containers.
+    //
+    // The G2 display uses two overlapping containers:
+    //   Container 1 — full display width (576px), holds the centered flight
+    //                 number on line 1 and left-column data on lines 2–5.
+    //   Container 2 — right-side overlay, positioned just past the longest
+    //                 left-column line plus a small gap, holds block time,
+    //                 min takeoff fuel, and FA 3/4 on lines 2–5.
+    //
+    // Using two pixel-positioned containers (rather than space-padding a single
+    // string) gives reliable column alignment regardless of content length.
     function buildContainers(flt, orig, dest, blockHrs, fuel, minTo, fas) {
+      // Convert decimal hours to H:MM display string
       const h = Math.floor(blockHrs);
       const m = Math.round((blockHrs % 1) * 60);
       const blockStr = `${h}:${String(m).padStart(2, '0')}`;
@@ -176,7 +204,7 @@
       const crew = fas.map(n => n.trim());
       const mintoStr = `MINTO ${fuelStr(minTo)}`;
 
-      // Left column content (lines 2-5 only — used to measure max width)
+      // Left column lines 2–5 (used to calculate the right container's x offset)
       const leftTexts = [
         `${orig.toUpperCase()} \u2192 ${dest.toUpperCase()}`,
         `RLS ${fuelStr(fuel)}`,
@@ -184,19 +212,17 @@
         crew[1] || '',
       ];
 
-      // Anchor right column just after the longest left line + a small gap
+      // Right container starts just after the longest left line + a gap
       const maxLeftLen = Math.max(...leftTexts.map(s => s.length), 1);
-      const GAP = 4; // chars between left content and right column
+      const GAP = 4; // character-widths of spacing between columns
       const leftPx  = Math.ceil((maxLeftLen + GAP) * CHAR_PX);
       const rightPx = DISPLAY_W - leftPx;
 
-      // Center flight number across full 40-char display
+      // Center the flight number across the full 40-char display width
       const fltStr = 'AAL' + flt;
       const fltPad = Math.floor((40 - fltStr.length) / 2);
       const fltCentered = ' '.repeat(Math.max(0, fltPad)) + fltStr;
 
-      // Container 1 spans full width so centering works; left text is short
-      // and won't reach the right container's territory
       const leftLines  = [fltCentered, ...leftTexts];
       const rightLines = ['', blockStr, mintoStr, crew[2] || '', crew[3] || ''];
 
@@ -207,18 +233,24 @@
       };
     }
 
-window.sendToGlasses = async function() {
+    // ── Send ──────────────────────────────────────────────────────────────────
+
+    window.sendToGlasses = async function() {
       const status = document.getElementById('status');
       status.style.display = 'none';
 
+      // Collect and parse form values
       const flt   = document.getElementById('flt').value.trim();
       const orig  = document.getElementById('orig').value.trim();
       const dest  = document.getElementById('dest').value.trim();
+
+      // Accept flight time as H:MM or as a decimal hour
       const blockRaw = document.getElementById('block').value.trim();
       const blockParts = blockRaw.split(':');
       const block = blockParts.length === 2
         ? (parseInt(blockParts[0]) || 0) + (parseInt(blockParts[1]) || 0) / 60
         : parseFloat(blockRaw) || 0;
+
       const fuel  = parseFloat(document.getElementById('fuel').value) || 0;
       const minto = parseFloat(document.getElementById('minto').value) || 0;
 
@@ -233,6 +265,7 @@ window.sendToGlasses = async function() {
       const { leftContent, rightContent, leftPx, rightPx } =
         buildContainers(flt, orig, dest, block, fuel, minto, fas);
 
+      // Preview mode: no bridge, just show the formatted text in the status area
       if (!bridge) {
         status.textContent = 'No bridge — left:\n' + leftContent + '\n\nright:\n' + rightContent;
         status.className = 'ok';
@@ -244,6 +277,10 @@ window.sendToGlasses = async function() {
       btn.textContent = 'Sending...';
 
       try {
+        // createStartUpPageContainer sends content to the G2 startup/dashboard display.
+        // containerTotalNum must match the number of objects in textObject.
+        // Container 1 spans the full display width so the centered flight number
+        // renders correctly; container 2 overlays on top for right-column alignment.
         const result = await bridge.createStartUpPageContainer({
           containerTotalNum: 2,
           textObject: [
