@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preflight</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      background: #f2f2f7;
+      min-height: 100vh;
+      padding: 20px 16px 40px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #1c1c1e;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      padding: 11px 16px;
+      border-bottom: 0.5px solid #e5e5ea;
+      gap: 12px;
+    }
+    .row:last-child { border-bottom: none; }
+
+    .row label {
+      width: 100px;
+      font-size: 15px;
+      color: #3c3c43;
+      flex-shrink: 0;
+    }
+
+    .row input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      color: #1c1c1e;
+      background: transparent;
+      text-align: right;
+    }
+
+    .row input::placeholder { color: #c7c7cc; }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      background: #007AFF;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { background: #aeaeb2; }
+
+    #status {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+    #status.ok  { background: #d1f0d8; color: #1a6630; }
+    #status.err { background: #fde8e8; color: #8b1a1a; }
+
+    .bridge-badge {
+      font-size: 11px;
+      color: #8e8e93;
+      text-align: center;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Preflight Release</h1>
+
+  <div class="card">
+    <div class="row">
+      <label>Flight</label>
+      <input id="flt" placeholder="1234" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="numeric">
+    </div>
+    <div class="row">
+      <label>Origin</label>
+      <input id="orig" placeholder="LAX" maxlength="4" autocomplete="off" autocorrect="off" spellcheck="false" style="text-transform:uppercase">
+    </div>
+    <div class="row">
+      <label>Destination</label>
+      <input id="dest" placeholder="JFK" maxlength="4" autocomplete="off" autocorrect="off" spellcheck="false" style="text-transform:uppercase">
+    </div>
+    <div class="row">
+      <label>Flight Time</label>
+      <input id="block" type="text" placeholder="5:30" autocomplete="off" autocorrect="off">
+    </div>
+    <div class="row">
+      <label>Release Fuel</label>
+      <input id="fuel" type="number" placeholder="34.5" step="0.1" min="0">
+    </div>
+    <div class="row">
+      <label>Min T/O Fuel</label>
+      <input id="minto" type="number" placeholder="28.0" step="0.1" min="0">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label>FA 1</label>
+      <input id="fa1" placeholder="First name" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="row">
+      <label>FA 2</label>
+      <input id="fa2" placeholder="First name" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="row">
+      <label>FA 3</label>
+      <input id="fa3" placeholder="First name" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="row">
+      <label>FA 4</label>
+      <input id="fa4" placeholder="First name" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+  </div>
+
+  <button id="sendBtn" onclick="sendToGlasses()">Send to Glasses</button>
+  <button id="calBtn" onclick="sendRuler()" style="margin-top:10px;background:#8e8e93;">Calibrate Width</button>
+  <div id="status"></div>
+  <div class="bridge-badge" id="bridgeBadge">Connecting to bridge...</div>
+
+  <script type="module">
+    import { waitForEvenAppBridge } from 'https://unpkg.com/@evenrealities/even_hub_sdk@0.0.7/dist/index.js';
+
+    let bridge = null;
+    const badge = document.getElementById('bridgeBadge');
+    const btn   = document.getElementById('sendBtn');
+
+    waitForEvenAppBridge()
+      .then(b => {
+        bridge = b;
+        badge.textContent = 'Bridge ready';
+        btn.disabled = false;
+      })
+      .catch(e => {
+        badge.textContent = 'Bridge unavailable (preview mode)';
+        btn.disabled = false; // allow testing UI without glasses
+      });
+
+    btn.disabled = true;
+
+    const DISPLAY_W = 576; // container width in SDK units
+    const CHAR_PX   = 14.4; // DISPLAY_W / 40 chars
+
+    function fuelStr(n) {
+      return parseFloat(n.toPrecision(3)).toString();
+    }
+
+    function buildContainers(flt, orig, dest, blockHrs, fuel, minTo, fas) {
+      const h = Math.floor(blockHrs);
+      const m = Math.round((blockHrs % 1) * 60);
+      const blockStr = `${h}:${String(m).padStart(2, '0')}`;
+
+      const crew = fas.map(n => n.trim());
+      const mintoStr = `MINTO ${fuelStr(minTo)}`;
+
+      // Left column content (lines 2-5 only — used to measure max width)
+      const leftTexts = [
+        `${orig.toUpperCase()} \u2192 ${dest.toUpperCase()}`,
+        `RLS ${fuelStr(fuel)}`,
+        crew[0] || '',
+        crew[1] || '',
+      ];
+
+      // Anchor right column just after the longest left line + a small gap
+      const maxLeftLen = Math.max(...leftTexts.map(s => s.length), 1);
+      const GAP = 4; // chars between left content and right column
+      const leftPx  = Math.ceil((maxLeftLen + GAP) * CHAR_PX);
+      const rightPx = DISPLAY_W - leftPx;
+
+      // Center flight number across full 40-char display
+      const fltStr = 'AAL' + flt;
+      const fltPad = Math.floor((40 - fltStr.length) / 2);
+      const fltCentered = ' '.repeat(Math.max(0, fltPad)) + fltStr;
+
+      // Container 1 spans full width so centering works; left text is short
+      // and won't reach the right container's territory
+      const leftLines  = [fltCentered, ...leftTexts];
+      const rightLines = ['', blockStr, mintoStr, crew[2] || '', crew[3] || ''];
+
+      return {
+        leftContent:  leftLines.join('\n'),
+        rightContent: rightLines.join('\n'),
+        leftPx, rightPx,
+      };
+    }
+
+    window.sendRuler = async function() {
+      if (!bridge) return;
+      // Each line is exactly N chars — count where it wraps to find screen width
+      const content = [
+        '1234567890123456789012345678901234567890',
+        '----+----1----+----2----+----3----+----4',
+        '         1         2         3         4',
+      ].join('\n');
+      await bridge.createStartUpPageContainer({
+        containerTotalNum: 1,
+        textObject: [{ containerID: 1, containerName: 'main',
+          xPosition: 0, yPosition: 0, width: 576, height: 136,
+          isEventCapture: 1, content }]
+      });
+    };
+
+    window.sendToGlasses = async function() {
+      const status = document.getElementById('status');
+      status.style.display = 'none';
+
+      const flt   = document.getElementById('flt').value.trim();
+      const orig  = document.getElementById('orig').value.trim();
+      const dest  = document.getElementById('dest').value.trim();
+      const blockRaw = document.getElementById('block').value.trim();
+      const blockParts = blockRaw.split(':');
+      const block = blockParts.length === 2
+        ? (parseInt(blockParts[0]) || 0) + (parseInt(blockParts[1]) || 0) / 60
+        : parseFloat(blockRaw) || 0;
+      const fuel  = parseFloat(document.getElementById('fuel').value) || 0;
+      const minto = parseFloat(document.getElementById('minto').value) || 0;
+
+      if (!flt || !orig || !dest) {
+        status.textContent = 'Fill in flight, origin, and destination.';
+        status.className = 'err';
+        status.style.display = 'block';
+        return;
+      }
+
+      const fas = ['fa1','fa2','fa3','fa4'].map(id => document.getElementById(id).value.trim());
+      const { leftContent, rightContent, leftPx, rightPx } =
+        buildContainers(flt, orig, dest, block, fuel, minto, fas);
+
+      if (!bridge) {
+        status.textContent = 'No bridge — left:\n' + leftContent + '\n\nright:\n' + rightContent;
+        status.className = 'ok';
+        status.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      try {
+        const result = await bridge.createStartUpPageContainer({
+          containerTotalNum: 2,
+          textObject: [
+            {
+              containerID: 1, containerName: 'left',
+              xPosition: 0, yPosition: 0,
+              width: DISPLAY_W, height: 136,
+              paddingLength: 0,
+              isEventCapture: 1,
+              content: leftContent,
+            },
+            {
+              containerID: 2, containerName: 'right',
+              xPosition: leftPx, yPosition: 0,
+              width: rightPx, height: 136,
+              paddingLength: 0,
+              content: rightContent,
+            },
+          ]
+        });
+
+        status.textContent = result === 0 ? 'Sent successfully!' : `Sent (result: ${result})`;
+        status.className = 'ok';
+      } catch(e) {
+        status.textContent = 'Error: ' + e;
+        status.className = 'err';
+      }
+
+      status.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Send to Glasses';
+    };
+  </script>
+</body>
+</html>
