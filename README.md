@@ -27,3 +27,7 @@ Preflight is intended for use during non-critical phases of flight when personal
 ## Roadmap
 
 - Automatic parsing of release data to pre-fill the form
+
+## Author
+
+[flyCeliac](https://github.com/flyCeliac) — developed with the assistance of [Claude](https://claude.ai) (Anthropic)
