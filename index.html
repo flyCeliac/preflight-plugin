@@ -7,15 +7,18 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    html, body {
+    html {
       height: 100%;
-      overflow: hidden; /* prevent page scroll */
     }
 
     body {
       font-family: -apple-system, system-ui, sans-serif;
       background: #EEEEEE; /* BC-3rd: main page background */
       padding: 10px 12px 12px; /* 12px side margins per Even OS layout guidelines */
+      position: fixed; /* prevent elastic/rubber-band scroll in WebViews */
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
     }
 
     /* Navigation-style centered title */
@@ -258,15 +261,17 @@
       // Separator line spans left content + gap + right content
       const separator = '\u2500'.repeat(maxLeftLen + GAP + maxRightLen);
 
-      // Center the flight number across the full 40-char display width
+      // Weave flight number into separator line: ──── AAL1328 ────
+      // This keeps the layout at 5 lines (fits in 136px) while adding visual structure.
       const fltStr = 'AAL' + flt;
-      const fltPad = Math.floor((40 - fltStr.length) / 2);
-      const fltCentered = ' '.repeat(Math.max(0, fltPad)) + fltStr;
+      const dashTotal = 40 - fltStr.length - 2; // -2 for spaces around flight number
+      const dashLeft  = Math.floor(dashTotal / 2);
+      const dashRight = dashTotal - dashLeft;
+      const fltLine = '\u2500'.repeat(dashLeft) + ' ' + fltStr + ' ' + '\u2500'.repeat(dashRight);
 
-      // Layout: flight# / separator / route+fuel / crew
-      // Only one separator (under flight#) to stay within the 136px display height (6 lines max)
-      const leftLines  = [fltCentered, separator, ...leftFlightTexts,  ...leftCrewTexts];
-      const rightLines = ['',          '',         ...rightFlightTexts, ...rightCrewTexts];
+      // Layout: decorated flight# / route+fuel / crew (5 lines, fits in 136px)
+      const leftLines  = [fltLine, ...leftFlightTexts,  ...leftCrewTexts];
+      const rightLines = ['',      ...rightFlightTexts, ...rightCrewTexts];
 
       return {
         leftContent:  leftLines.join('\n'),
