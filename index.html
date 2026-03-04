@@ -7,12 +7,15 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html, body {
+      height: 100%;
+      overflow: hidden; /* prevent page scroll */
+    }
+
     body {
       font-family: -apple-system, system-ui, sans-serif;
       background: #EEEEEE; /* BC-3rd: main page background */
-      min-height: 100vh;
-      padding: 12px 12px 16px; /* 12px side margins per Even OS layout guidelines */
-      overflow: hidden; /* prevent page scroll */
+      padding: 10px 12px 12px; /* 12px side margins per Even OS layout guidelines */
     }
 
     /* Navigation-style centered title */
@@ -37,7 +40,7 @@
     .row {
       display: flex;
       align-items: center;
-      padding: 8px 16px;
+      padding: 6px 16px;
       border-bottom: 0.5px solid #E4E4E4; /* BC-4th divider */
       gap: 12px;
     }
@@ -72,7 +75,7 @@
     /* Primary action button: BC-Highlight (#232323) with arrow prefix per Even OS pattern */
     button {
       width: 100%;
-      padding: 16px;
+      padding: 12px;
       background: #232323; /* BC-Highlight */
       color: #FFFFFF;      /* TC-Highlight */
       border: none;
@@ -260,9 +263,10 @@
       const fltPad = Math.floor((40 - fltStr.length) / 2);
       const fltCentered = ' '.repeat(Math.max(0, fltPad)) + fltStr;
 
-      // Layout: flight# / separator / route+fuel / separator / crew
-      const leftLines  = [fltCentered, separator, ...leftFlightTexts,  separator, ...leftCrewTexts];
-      const rightLines = ['',          '',         ...rightFlightTexts, '',         ...rightCrewTexts];
+      // Layout: flight# / separator / route+fuel / crew
+      // Only one separator (under flight#) to stay within the 136px display height (6 lines max)
+      const leftLines  = [fltCentered, separator, ...leftFlightTexts,  ...leftCrewTexts];
+      const rightLines = ['',          '',         ...rightFlightTexts, ...rightCrewTexts];
 
       return {
         leftContent:  leftLines.join('\n'),
