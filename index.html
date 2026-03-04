@@ -236,27 +236,32 @@
       const crew = fas.map(n => n.trim());
       const mintoStr = `MINTO ${fuelStr(minTo)}`;
 
-      // Left column lines 2–5 (used to calculate the right container's x offset)
-      const leftTexts = [
-        `${orig.toUpperCase()} \u2192 ${dest.toUpperCase()}`,
-        `RLS ${fuelStr(fuel)}`,
-        crew[0] || '',
-        crew[1] || '',
-      ];
+      // Left and right content split into flight data and crew sections
+      const leftFlightTexts  = [`${orig.toUpperCase()} \u2192 ${dest.toUpperCase()}`, `RLS ${fuelStr(fuel)}`];
+      const leftCrewTexts    = [crew[0] || '', crew[1] || ''];
+      const rightFlightTexts = [blockStr, mintoStr];
+      const rightCrewTexts   = [crew[2] || '', crew[3] || ''];
 
       // Right container starts just after the longest left line + a gap
-      const maxLeftLen = Math.max(...leftTexts.map(s => s.length), 1);
+      const allLeftTexts  = [...leftFlightTexts, ...leftCrewTexts];
+      const allRightTexts = [...rightFlightTexts, ...rightCrewTexts];
+      const maxLeftLen  = Math.max(...allLeftTexts.map(s => s.length), 1);
+      const maxRightLen = Math.max(...allRightTexts.map(s => s.length), 0);
       const GAP = 4; // character-widths of spacing between columns
       const leftPx  = Math.ceil((maxLeftLen + GAP) * CHAR_PX);
       const rightPx = DISPLAY_W - leftPx;
+
+      // Separator line spans left content + gap + right content
+      const separator = '\u2500'.repeat(maxLeftLen + GAP + maxRightLen);
 
       // Center the flight number across the full 40-char display width
       const fltStr = 'AAL' + flt;
       const fltPad = Math.floor((40 - fltStr.length) / 2);
       const fltCentered = ' '.repeat(Math.max(0, fltPad)) + fltStr;
 
-      const leftLines  = [fltCentered, ...leftTexts];
-      const rightLines = ['', blockStr, mintoStr, crew[2] || '', crew[3] || ''];
+      // Layout: flight# / separator / route+fuel / separator / crew
+      const leftLines  = [fltCentered, separator, ...leftFlightTexts,  separator, ...leftCrewTexts];
+      const rightLines = ['',          '',         ...rightFlightTexts, '',         ...rightCrewTexts];
 
       return {
         leftContent:  leftLines.join('\n'),
