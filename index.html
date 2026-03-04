@@ -7,18 +7,16 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    html {
+    html, body {
       height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
     }
 
     body {
       font-family: -apple-system, system-ui, sans-serif;
       background: #EEEEEE; /* BC-3rd: main page background */
       padding: 10px 12px 12px; /* 12px side margins per Even OS layout guidelines */
-      position: fixed; /* prevent elastic/rubber-band scroll in WebViews */
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
     }
 
     /* Navigation-style centered title */
