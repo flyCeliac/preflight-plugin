@@ -258,20 +258,14 @@
       const leftPx  = Math.ceil((maxLeftLen + GAP) * CHAR_PX);
       const rightPx = DISPLAY_W - leftPx;
 
-      // Separator line spans left content + gap + right content
-      const separator = '\u2500'.repeat(maxLeftLen + GAP + maxRightLen);
-
-      // Weave flight number into separator line: ──── AAL1328 ────
-      // This keeps the layout at 5 lines (fits in 136px) while adding visual structure.
+      // Center the flight number across the full 40-char display width
       const fltStr = 'AAL' + flt;
-      const dashTotal = 40 - fltStr.length - 2; // -2 for spaces around flight number
-      const dashLeft  = Math.floor(dashTotal / 2);
-      const dashRight = dashTotal - dashLeft;
-      const fltLine = '\u2500'.repeat(dashLeft) + ' ' + fltStr + ' ' + '\u2500'.repeat(dashRight);
+      const fltPad = Math.floor((40 - fltStr.length) / 2);
+      const fltCentered = ' '.repeat(Math.max(0, fltPad)) + fltStr;
 
-      // Layout: decorated flight# / route+fuel / crew (5 lines, fits in 136px)
-      const leftLines  = [fltLine, ...leftFlightTexts,  ...leftCrewTexts];
-      const rightLines = ['',      ...rightFlightTexts, ...rightCrewTexts];
+      // Layout: flight# / route+fuel / crew (5 lines, fits in 136px)
+      const leftLines  = [fltCentered, ...leftFlightTexts,  ...leftCrewTexts];
+      const rightLines = ['',          ...rightFlightTexts, ...rightCrewTexts];
 
       return {
         leftContent:  leftLines.join('\n'),
