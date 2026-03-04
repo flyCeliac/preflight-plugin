@@ -248,11 +248,9 @@
       const rightCrewTexts   = [crew[2] || '', crew[3] || ''];
 
       // Right container starts just after the longest left line + a gap
-      const allLeftTexts  = [...leftFlightTexts, ...leftCrewTexts];
-      const allRightTexts = [...rightFlightTexts, ...rightCrewTexts];
-      const maxLeftLen  = Math.max(...allLeftTexts.map(s => s.length), 1);
-      const maxRightLen = Math.max(...allRightTexts.map(s => s.length), 0);
-      const GAP = 4; // character-widths of spacing between columns
+      const allLeftTexts = [...leftFlightTexts, ...leftCrewTexts];
+      const maxLeftLen   = Math.max(...allLeftTexts.map(s => s.length), 1);
+      const GAP  = 4; // character-widths of spacing between columns
       const leftPx  = Math.ceil((maxLeftLen + GAP) * CHAR_PX);
       const rightPx = DISPLAY_W - leftPx;
 
