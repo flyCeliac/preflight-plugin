@@ -30,6 +30,7 @@
       border-radius: 6px;
       overflow: hidden;
       margin-bottom: 12px; /* 12px same-subject spacing */
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
     }
 
     .row {
@@ -57,10 +58,13 @@
       font-size: 15px;
       font-weight: 400;
       letter-spacing: -0.15px;
-      color: #7B7B7B; /* TC-2nd: detail value color per Even OS settings pattern */
+      color: #7B7B7B; /* TC-2nd: placeholder shown — overridden below when filled */
       background: transparent;
       text-align: right;
     }
+
+    /* Show filled values in TC-1st so they're clearly distinct from placeholders */
+    .row input:not(:placeholder-shown) { color: #232323; }
 
     .row input::placeholder { color: #7B7B7B; } /* TC-2nd */
 
@@ -72,11 +76,12 @@
       color: #FFFFFF;      /* TC-Highlight */
       border: none;
       border-radius: 6px;
-      font-size: 15px;
+      font-size: 17px;
       font-weight: 400;
-      letter-spacing: -0.15px;
+      letter-spacing: -0.17px;
       cursor: pointer;
       margin-top: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
     }
     button:disabled {
       background: #FFFFFF; /* BC-1st: disabled state per Even OS */
@@ -92,15 +97,24 @@
       text-align: center;
       display: none;
     }
-    #status.ok  { background: #FFFFFF; color: #4BB956; } /* TC-Green */
-    #status.err { background: #FFFFFF; color: #FF453A; } /* TC-Red */
+    #status.ok  { background: #FFFFFF; color: #4BB956; box-shadow: 0 1px 3px rgba(0,0,0,0.07); } /* TC-Green */
+    #status.err { background: #FFFFFF; color: #FF453A; box-shadow: 0 1px 3px rgba(0,0,0,0.07); } /* TC-Red */
 
+    /* Bridge status pill */
     .bridge-badge {
+      display: inline-block;
       font-size: 11px;
       letter-spacing: -0.11px;
       color: #7B7B7B; /* TC-2nd */
+      background: #E4E4E4; /* BC-4th */
+      border-radius: 20px;
+      padding: 3px 10px;
+      margin-top: 10px;
+    }
+
+    .bridge-wrap {
       text-align: center;
-      margin-top: 8px;
+      margin-top: 2px;
     }
   </style>
 </head>
@@ -157,7 +171,7 @@
 
   <button id="sendBtn" onclick="sendToGlasses()">→ Send to Glasses</button>
   <div id="status"></div>
-  <div class="bridge-badge" id="bridgeBadge">Connecting to bridge...</div>
+  <div class="bridge-wrap"><span class="bridge-badge" id="bridgeBadge">Connecting to bridge...</span></div>
 
   <script type="module">
     // Preflight — Even HUB plugin for airline pilots
